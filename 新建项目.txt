@@ -1,0 +1,702 @@
+上
+1、前期准备
+创建一个文件夹，用node命令行工具进入该文件夹，运行npm init命令 生成一个初始package.json
+
+
+2、配置package.json
+{
+	"name": "myreact",
+	"version": "1.0.0",
+	"description": "...",
+	"main": "index.js",
+	"scripts": {
+		"watch": "node server.js",
+		"build": "webpack -p --config webpack.production.config.js --progress --profile --colors"
+	},
+	"author": "luo",
+	"license": "ISC",
+	"private": true,
+	"dependencies": {
+		"antd": "^2.6.3",
+		"babel-polyfill": "^6.20.0",
+		"react": "^15.4.2",
+		"react-dom": "^15.4.2",
+		"react-redux": "^5.0.1",
+		"react-router": "^3.0.0",
+		"react-router-redux": "^4.0.7",
+		"redux": "^3.6.0",
+		"redux-thunk": "^2.1.0",
+		"reqwest": "^2.0.5"
+	},
+	"devDependencies": {
+		"babel-core": "^6.21.0",
+		"babel-loader": "^6.2.10",
+		"babel-plugin-import": "^1.1.0",
+		"babel-preset-es2015": "^6.18.0",
+		"babel-preset-react": "^6.16.0",
+		"babel-preset-stage-3": "^6.17.0",
+		"css-loader": "^0.26.1",
+		"eslint": "^3.13.1",
+		"eslint-loader": "^1.6.1",
+		"eslint-plugin-react": "^6.9.0",
+		"extract-text-webpack-plugin": "^1.0.1",
+		"file-loader": "^0.9.0",
+		"html-webpack-plugin": "^2.26.0",
+		"less": "^2.7.2",
+		"less-loader": "^2.2.3",
+		"react-router-dom": "^4.2.2",
+		"style-loader": "^0.13.1",
+		"url-loader": "^0.5.7",
+		"webpack": "^1.14.0",
+		"webpack-dev-server": "^1.16.2"
+	}
+}
+
+
+
+3、然后创建一下项目的基本目录结构
+创建是src, 在src中创建index.js, index.html, index_template.html
+
+
+4、配置babel
+
+babel 用于解析ES6，jsx等新语法，让现代浏览器可以运行。 
+创建.babelrc文件（名为.babelrc,无后缀）
+
+{
+  // 运用babel的3个插件，es2015,stage-3,react （即npm install时的那3个插件）
+  "presets": ["es2015", "stage-3", 'react'],
+  // 下面是配置按需加载那个插件的（babel-plugin-import）
+  // 是从蚂蚁金服抄的，大致意思就是，css、less等样式文件需要按需加载
+  // js也要按需加载
+  "plugins": [["import",[
+    {
+        "libraryName": "antd",
+        "libraryDirectory": "lib",
+        "style": true
+    },
+   {
+        "libraryName": "antd-mobile",
+        "libraryDirectory": "component",
+   },
+  ]]]
+}
+
+
+5、配置eslint
+新建  .eslintrc.json  文件
+
+{
+    // 项目的环境
+    // 意思就是以下配置的这些环境，它们自身的全局变量,eslint认为是存在的，比如jquery的$,如果下面不配置jquery:true,项目中直接使用$,eslint会认为$未定义
+    "env": {
+        "browser": true,  // 浏览器环境，window变量等
+        "commonjs": true, // commonjs环境，require方法等
+        "es6": true, // es6环境，各种es6新功能
+        "jquery": true // jquery, 就是$符号
+    },
+    // 继承某个官方定义好的检查规则
+    // 下面用的是react的规则，必须配这个，否则eslint识别不了react
+    "extends": "plugin:react/recommended",
+    // 设置各种解析器
+    "parserOptions": {
+        "ecmaVersion": 8, // js版本，最新的8（即JS2017）
+        "ecmaFeatures": { // 额外的语言特性
+            "impliedStrict": true, // 全局启用严格模式
+            "experimentalObjectRestSpread": true, // 支持...余运算符，就是ES6里面那个“...”解构赋值
+            "jsx": true // jsx语法
+        },
+        "sourceType": "module" // 代码类型：模块化。因为我们经常用import,export等
+    },
+    // 第3方插件
+    "plugins": [
+        "react" // 支持react(即eslint-plugin-react)，上面配置了jsx,但react语法不仅仅是jsx，所以需要这个
+    ],
+    // 自定义的检查规则
+    "rules": {
+        // 字符串的引号必须用单引号
+        "quotes": [
+            "error",
+            "single"
+        ],
+        // 每一句代码结束必须加分号
+        "semi": [
+            "error",
+            "always"
+        ],
+        "no-cond-assign": "error", // 禁止条件表达式中出现赋值操作符
+        "no-debugger": "error", // 不允许代码中出现debugger
+        "no-dupe-args": "error", // function禁止重名参数
+        "no-caller": "error", // 禁用 arguments.caller 或 arguments.callee
+        "no-invalid-this": "error", // 禁止全局this
+        "no-unmodified-loop-condition": "error", // 禁止死循环
+        "no-with": "error", // 禁止使用with语句
+        "no-catch-shadow": "error" // 禁止 catch 子句的参数与外层作用域中的变量同名
+    }
+}
+
+
+6、配置webpack
+
+webpack用于项目打包，把众多的js,css等文件压缩，混淆加密，最终只生成几个合并后的文件
+
+开发环境和生产环境的配置有所不同，下面先配置开发环境：
+
+webpack.dev.config.js
+
+
+
+var path = require('path'); // 用于获取根路径
+var webpack = require('webpack'); // webpack核心
+
+var ROOT_PATH = path.resolve(__dirname); // 项目根路径
+var APP_PATH = path.resolve(ROOT_PATH, 'src'); // 项目的src目录路径
+var APP_FILE = path.resolve(APP_PATH, 'app'); // 项目的入口文件（即src/app.js）
+var BUILD_PATH = path.resolve(ROOT_PATH, '/build'); //规定打包好的文件存放到此目录下(开发模式中，我们一般配置为最终生成1个bundle.js)
+
+module.exports = {
+    /* 需要被打包的文件在此配置 */
+    entry: {
+        app: [
+            'webpack-dev-server/client?http://localhost:8888', // 热更新监听此地址（端口号与server.js中配置的要一致，我们稍后来写server.js）
+            'webpack/hot/only-dev-server', // 启用热更新
+            APP_FILE    // 入口文件
+        ]
+    },
+    /* 打包后要输出的文件在此配置 */
+    output: {
+        publicPath: '/test/', // 这是在启动webpack-dev-server时，bundle.js的引用路径应该相对于此路径，即在index.html中： 
+        // <script src="/test/bundle.js"></script>
+        // 而且所有的url地址，比如css中的背景图片，html中的img的src都会自动变成：/test/*****
+        path: BUILD_PATH, // 将打包好的文件放在此路径下，开发模式中只会在内存中存在，不会在此路径生成真正的文件
+        filename: 'bundle.js', //最终生成的文件名字
+    },
+    devtool: 'source-map', // 打包后，代码都被压缩了，如果报错看不出是在哪一行报的错，配置这个就是为了解决这个问题
+    /* 下面是配置一些解析器 */
+    module: {
+        /* 在打包之前运行 */
+        preLoaders: [
+          {
+            test: /\.js?$/, // 解析.js,.jsx
+            loader: 'eslint', // 解析器是eslint,即进行语法检查，不过关的话会报错
+            exclude: /node_modules/, // 不检查node_modules目录下的内容
+          },
+        ],
+        /* 打包时需要用到的解析器 */
+        loaders: [
+            // 解析.js,.jsx,用babel解析器，webpack会自动加载我们配置的.babelrc文件
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                loader: 'babel',
+            },
+            // 解析.css,先执行css-loader,再执行style-loader
+            // 注意：连node_modules中的也一并解析
+            {
+                test: /\.css$/,
+                loaders: ['style', 'css'],
+            },
+            // 解析.less,先执行css-loader,再执行style-loader
+            // 注意：连node_modules中的也一并解析(因为蚂蚁金服ui框架的样式文件就存在此目录下)
+            // 如果没有用到less，就不用配（如果不配，蚂蚁金服ui框架的样式文件就要使用antd.css,而不要使用antd.less）
+            {
+                test: /\.less$/,
+                loaders: ['style', 'css', 'less'],
+            },
+            // 其他各类文件处理，打包后会把这些文件挪到打包好的文件夹中
+            {
+                test: /\.(eot|woff|svg|ttf|woff2|gif|appcache|mp3)(\?|$)/,
+                exclude: /node_modules/,
+                loader: 'file-loader?name=[name].[ext]',
+            },
+            // 处理图片，这里配置的是，小于8192字节的图片变成base64编码，其余图片最终会生成一个images文件夹，存放其中
+            {
+                test: /\.(png|jpg|gif)$/,
+                exclude: /node_modules/,
+                loader: 'url-loader?limit=8192&name=images/[hash:8].[name].[ext]',
+            }
+        ]
+    },
+    /* 配置一些额外的webpack插件 */
+    plugins: [
+        new webpack.HotModuleReplacementPlugin(),   // 热更新插件
+        new webpack.NoErrorsPlugin()    // 即使有错误也不中断运行
+    ],
+    /* 配置额外的自定义方案 */
+    resolve: {
+        extensions: ['', '.js', '.jsx', '.less', '.css'], //在webpack打包时，自动匹配这些后缀名的文件
+    }
+};
+
+
+
+
+
+7、写server.js
+
+第6步配置了webpack.dev.config.js,打包后，需要运行这个项目， 
+所以写一个server.js：
+
+var webpack = require('webpack'); // webpack核心
+var WebpackDevServer = require('webpack-dev-server'); // webpack提供的服务器插件
+var config = require('./webpack.dev.config.js'); // webpack的配置文件
+
+/* 下面是创建一个服务对象，固定写法 */
+var server = new WebpackDevServer(webpack(config), {
+    publicPath: config.output.publicPath, // 文件相对引用路径，就用配置文件中配置的
+    hot: true, // 是否启用热更新
+    inline: true, // 是否实时刷新，即代码有更改，自动刷新浏览器
+    historyApiFallback: true, // 所有的url路径均跳转到index.html,需要设置为true，否则比如访问localhost:8888,就跳转不到/home页
+    progress: true, // 在控制台输出webpack的编译进度
+    stats: { colors: true }, // 不同类型的信息用不同的颜色显示
+});
+
+/* 将所有的访问路径，都返回index.html */
+server.app.get('*', function(req, res) {
+    res.sendFile(__dirname + '/src/index.html')
+});
+/* 启动服务 */
+server.listen(8888, function() {
+    console.log('启动服务：8888端口')
+});
+
+
+npm i
+
+配置index.js文件
+
+启动服务的命令在package.json中已经配好： 
+运行 npm run watch 即可
+
+
+8、配置webpack.production.config.js
+
+即最终用于生产环境的正式打包所需配置
+
+webpack.production.config.js:
+
+var path = require('path'); // 为了得到项目根路径
+var webpack = require('webpack'); // webpack核心
+var ExtractTextPlugin = require('extract-text-webpack-plugin'); // 为了单独打包css
+var HtmlWebpackPlugin = require('html-webpack-plugin'); //根据模板生成最终html文件
+
+var ROOT_PATH = path.resolve(__dirname); // 项目根路径
+var APP_PATH = path.resolve(ROOT_PATH, 'src'); // 项目src目录
+var APP_FILE = path.resolve(APP_PATH, 'app'); //项目入口文件（即src/app.js)
+var BUILD_PATH = path.resolve(ROOT_PATH, 'build/dist'); //打包后文件所存放的目录（一般就这么命名）
+
+module.exports = {
+    entry: {
+        app: APP_FILE, // 需要被打包的文件，就这个入口文件
+    },
+    output: {
+        path: BUILD_PATH, // 将文件打包到此目录下
+        publicPath: '/', // 在生成的html中，文件的引入路径会相对于此地址，生成的css中，以及各类图片的URL都会相对于此地址
+        // 因为打包后的所有文件，是要交给后台程序员，然后跟后台程序一起，组装成一个完整的项目，上线后，肯定有一个网址来访问，比如: www.test.com; 
+        // 那么前端代码中所有的URL地址，都是相对于这个网址而言的，所以这里配置publicPath为‘/’,比如首页的路径就是www.test.com/home,图片test.jpg的访问路径就是www.test.com/images/test.jpg
+        // 最关键的是路由跳转，我们之后要配置react路由，比如这里配置的publicPath是‘/’,那路由中route访问主页，就应该配置为：
+        // <Route path="/home" component={homeContainer} />
+        // 又比如publicPath配置的是'/xxx', route就应该是：
+        // <Route path="/xxx/home" component={homeContainer} />
+        // 一般就配置为'/',因为一个项目上线后就会有一个顶级域名指向它，但我们自己测试的时候，比如你最终打包了，然后把代码放到tomcat中运行，tomcat访问肯定就是:http://localhost:8888/myreact,这不是顶级域名，你就应该配置publicPath为‘/myreact’,路由中也相应配置为/myreact/home
+        filename: '[name].js', // 最终生成的文件名字，项目中为app.js,最终也会叫app.js
+        chunkFilename: '[name].chunk.js', // 这是配置一些非入口文件生成的最终文件名字，比如你用了代码分割，按需加载，把你的项目中某些文件单独打包了，就会用到这个。我们这里只有一个app.js,所以这个暂时用不上
+    },
+    /* 各种解析器 */
+    module: {
+        loaders: [
+            // 解析.js,.jsx
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                loader: 'babel',
+            },
+            // 解析.css,注意这里要用这个插件作为loader,最后才能生成单独的css文件
+            {
+                test: /\.css$/,
+                loader: ExtractTextPlugin.extract('style', ['css']), // 用这种方式写的，表示此类文件单独打包成一个css文件
+            },
+            // 解析less,原理同上
+            {
+                test: /\.less$/,
+                loader: ExtractTextPlugin.extract('style', ['css','less']),
+            },
+            // 解析各种非图片文件
+            {
+                test: /\.(eot|woff|svg|ttf|woff2|gif|appcache|mp3)(\?|$)/,
+                exclude: /node_modules/,
+                loader: 'file-loader?name=[name].[ext]',
+            },
+            // 解析图片，小于8kb的转换成base64
+            // 注意配种中的name,就是生成到了images文件夹下
+            {
+                test: /\.(png|jpg|gif)$/,
+                exclude: /node_modules/,
+                loader: 'url-loader?limit=8192&name=images/[hash:8].[name].[ext]',
+            }
+        ]
+    },
+    /* 额外的插件 */
+    plugins: [
+        new webpack.DefinePlugin({ // 一定要配置这个，这个是为了告诉webpack，当前用什么模式打包代码，production生产模式，dev开发模式
+            'process.env': {
+                NODE_ENV: JSON.stringify('production') //定义生产环境
+            }
+        }),
+        // 此插件详细教程 http://www.cnblogs.com/haogj/p/5160821.html
+        new HtmlWebpackPlugin({  //根据模板插入css/js等生成最终HTML
+            filename: '../index.html', //生成的html存放路径，相对于（注意前面配置的BUILD_PATH是“build/dist”,即index.html会生成到build下，其他文件会打包到build/dist下）
+            template: './src/index_template.html', //html模板路径
+            inject: true, // 是否将js放在body的末尾
+            hash: false, // 是否为本页面所有资源文件添加一个独特的hash值
+        }),
+
+        // 配置了这个插件，再配合上面loader中的配置，将所有样式文件打包为一个单独的css文件
+        new ExtractTextPlugin('[name].css'),
+
+        // 提取那些公共的模块、代码打包为一个单独的js文件
+        // 下面这个方法第3个参数是自动去匹配，webpack遍历所有资源，发现是模块的，而且这个模块不是在src目录中的，就提取到公共js中
+        // 即把所有node_modules中用到的包都单独打包到一个js中，如果有css,还会单独生成一个vendors.css文件
+        new webpack.optimize.CommonsChunkPlugin('vendors', 'vendors.js', (module, count) =>
+      module.resource && module.resource.indexOf(APP_PATH) === -1),
+
+        // Uglify 加密压缩源代码
+        new webpack.optimize.UglifyJsPlugin({
+            output: {
+                comments: false, // 删除代码中所有注释
+            },
+            compress: {
+                warnings: false, // 估计是不输出警告信息之类的
+            },
+        }),
+    ],
+    // 配置额外的解决方案
+    resolve: {
+        extensions: ['', '.js', '.jsx', '.less', '.css'], //后缀名自动补全
+    }
+};
+
+
+9、写index.html 和 index_template.html模板
+
+index.html:
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+  <title>项目名字</title>
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="/test/bundle.js"></script>
+</body>
+</html>
+
+
+index_template.html
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+  <title>项目名称</title>
+</head>
+<body>
+  <div id="app-root"></div>
+</body>
+</html>
+
+
+下
+1、配置app.js
+
+import React from 'react'; // react核心，用到jsx的地方，都需要这个
+import ReactDOM from 'react-dom';   // 渲染组件时需要
+import {Provider} from 'react-redux'; // react和redux连接的桥梁，就是这个Provider
+import { Router, browserHistory } from 'react-router'; // 路由组件
+
+// babel本身只能转换ES6语法，但ES6新增的Map、Set、Generator等新功能不会转换，所以需要此插件
+import 'babel-polyfill';
+
+// 引入sotre,我们稍后配置
+import store from './store';
+
+// 所有的CSS全部引入到入口文件即可
+import 'antd/dist/antd.less'; // 这是蚂蚁金服ui框架的样式文件
+import './css/css.css'; // 这是我们自定义的css文件
+
+import AppRoutes from './route';    // 所有定义好的路由
+
+// 下面是创建根组件
+// 其中引入了store,route,browserHistory
+// 这里用的是browserHistory,即路由是依靠url地址的变化跳转的（比如www.test.com/home）
+// 也可以使用hashHistory,即路由是依靠锚点的变化跳转的(比如www.test.com/#/home)
+ReactDOM.render(
+  <Provider store={store}>
+    <Router routes={AppRoutes} history={browserHistory} queryKey={false} />
+  </Provider>,
+  document.getElementById('app-root') //  这个app-root是在index.html中写的div,其id为app-root
+);
+
+
+2、配置store
+在src/store下创建index.js,其内容为：
+import { createStore, applyMiddleware } from 'redux';
+import ReduxThunk from 'redux-thunk';   // 中间件，有了这个就可以支持异步action
+import RootReducer from '../a_reducer'; // 所有的reducer
+
+// 创建store
+const store = createStore(RootReducer, applyMiddleware(ReduxThunk));
+
+export default store;
+
+
+3、配置route
+在src/route中创建index.js:
+import React from 'react'; // react核心
+import { Route, Redirect, IndexRedirect } from 'react-router'; // 创建route所需
+
+/* 下面是引入一些我们自己定义的container,作为路由的页面 */
+// root这个container很重要 我们稍后配置
+import RootContainer from '../a_container/root';
+import TestContainer from '../a_container/home'; // 一个主页的container
+
+export default (
+  <Route path="/" component={RootContainer}> // 所有的访问，都跳转到rootContainer
+    <IndexRedirect to="/home" /> // 默认加载的组件，比如访问www.test.com,会自动跳转到www.test.com/home
+    <Route path="/home" component={TestContainer} /> // 一个路由地址，访问www.test.com/home,就会跳转到此
+    <Redirect from='*' to='/'  /> // 所有的其他未定义的访问路径，都跳转到根路径，比如访问www.test.com/abc, 但是/abc我们没有定义，就会自动跳转到www.test.com, 而www.test.com又会自动跳转到www.test.com/home
+  </Route>
+);
+
+
+
+4、写一个rootContainer作为所有组件的包裹层
+创建src/a_container/root/index.js
+
+import React, { PropTypes as P } from 'react'; // React和ProTypes
+import { connect } from 'react-redux'; // connect方法用于创建控制器组件，即数据和行为交由redux管理
+
+/* 需要挂载到redux上的参数 */
+const mapStoreStateToProps = (state) => ({
+  dispatch: state.dispatch,
+});
+
+/* 创建组件 */
+class RootContainer extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    // 这个组件是一个包裹组件，所有的路由跳转的页面都会以this.props.children的形式加载到本组件下
+    return (
+      <div className="boss">
+        {this.props.children}
+      </div>
+    );
+  }
+}
+
+/* 代码类型检查 */
+RootContainer.propTypes = {
+  dispatch: P.func,
+  children: P.any,
+};
+
+export default connect(mapStoreStateToProps)(RootContainer);
+
+
+5、写一个compont用于测试
+创建src/a_compont/test/index.js:
+
+import React, { PropTypes as P } from 'react'; // 引入了React和PropTypes
+// PropTypes是用于检查props参数类型，可有可无，最好是有
+
+/* 以类的方式创建一个组件 */
+class Com extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+    };
+  }
+
+  /* 组件初始化完毕时触发 */
+  componentDidMount() {
+  }
+
+  /* 渲染组件 */
+  render() {
+    return (
+      <div>
+        <span>{this.props.value}</span>
+        <button onClick={() => this.props.onClick(this.props.value)}>点击</button>
+      </div>
+    );
+  }
+}
+
+/* 下面是对该组件中涉及到的prop数据进行类型检查，如果类型不匹配会发出警告 */
+Com.propTypes = {
+  value: P.number,
+  onClick: P.func,
+};
+
+export default Com;
+
+
+
+6、写一个container用于测试
+
+创建src/a_container/home/index.js:
+
+// 所需的各种插件
+import React, { PropTypes as P } from 'react';
+import { connect } from 'react-redux';
+import { Link } from 'react-router';
+
+// 所需的所有组件
+import Test from '../../a_component/test'; // 引入第4步创建的组件
+
+
+// 本页面所需action
+import appAction from '../../a_action/app-action'; // 稍后创建
+
+// 最终要交给redux管理的所有变量
+const mapStoreStateToProps = (state) => ({
+  dispatch: state.dispatch,
+  testvalue: state.app.inputvalue,
+});
+
+
+// 最终要交给redux管理的所有action
+// 即定义哪些方法将成为action
+const mapDispatches = (dispatch) => ({
+  fn: {
+    onTestAdd: (v) => {
+      dispatch(appAction.onTestAdd(v));
+    },
+  },
+});
+
+// 创建组件
+class HomePageContainer extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+    };
+  }
+
+  render() {
+    return (
+      <div>
+        <Test
+          value={this.props.testvalue}
+          onClick={this.props.fn.onTestAdd}
+        />
+      </div>
+    );
+  }
+}
+
+// ==================
+// PropTypes
+// ==================
+
+HomePageContainer.propTypes = {
+  dispatch: P.func,
+  fn: P.object,
+  testvalue: P.number,
+  location: P.any, // location对象包含了浏览器url中的各种信息，会自动被引入到当前组件中，如果不需要的话可以去掉
+};
+
+export default connect(mapStoreStateToProps, mapDispatches)(HomePageContainer);
+
+
+
+
+
+7、创建一个action
+创建src/a_action/app_action.js
+
+export default class AdviserActions {
+  // 用户点击按钮时，将触发此方法
+  static onTestAdd(num) {
+    return { // 这个return,实际上是触发了action,redux会自动去触发reducer中对应的方法
+      type: 'TEST::add', // 与reducer中的type对应
+      payload: num + 1,
+    };
+  }
+}
+
+
+
+
+8、创建根reducer
+
+因为reducer可以创建很多个，但传给redux的只能是一个，所以创建一个根reduer,将其他所有reducer结合在一起 
+创建src/a_reducer/index.js
+
+
+/*
+ * 该Reducer为根reducer, 用于结合App中所有的reducer.
+ * 由于Redux中必须只有一个store和一个reducer ,
+ * 因此使用 combineReducers 来把多个reducer组合在一起
+ */
+
+import { combineReducers } from 'redux';
+import { routerReducer } from 'react-router-redux';
+
+/* 这里是我们自定义的各种reducer */
+import appReducer from './app-reducer'; // 这个稍后创建
+
+/* 利用官方提供的combineReducers将所有reducer组合成一个 */
+const RootReducer = combineReducers({
+  // 注意一定要加上routing: routerReducer 这是用于redux和react-router的连接
+  routing: routerReducer,
+  // 其他的reducers
+  app: appReducer, // 这里的命名，关系到container中取state对应的reducer的名字
+});
+
+export default RootReducer;
+
+
+
+9、创建自定义的reducer
+
+创建src/a_reducer/app-reducer.js
+
+
+const initState = {
+  inputvalue: 0, // 初始值
+};
+
+/* action 对应的处理方法，用于更新state中的数据 */
+const actDefault = (state) => state;
+
+const testAdd = (state, action) => {
+  const { payload } = action;
+  // 原本初始的时候，inputvalue,这里将最新的payload覆盖原来的值
+  return Object.assign({}, state, {
+    inputvalue: payload,
+  });
+};
+
+const reducerFn = (state = initState, action) => {
+  switch (action.type) {
+  // 匹配type来执行对应的方法，action中返回对应的type，这里就会执行对应的方法
+  case 'TEST::add':
+    return testAdd(state, action);
+  default:
+    return actDefault(state, action);
+  }
+};
+
+export default reducerFn;
+
+

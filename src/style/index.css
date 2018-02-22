@@ -1,0 +1,33 @@
+ul, li, a, div, h1, button, span {
+	margin: 0;
+	padding: 0;
+}
+
+ul, li {
+	list-style: none;
+}
+
+a{
+	color: #000;
+	text-decoration: none;
+}
+
+.boss .root-ul {
+	width: 100%;
+	height: 30px;
+}
+
+.boss .root-ul .root-li{
+	float: left;
+	display: inline-block;
+}
+
+.boss .root-ul .root-li a{
+	font-size: 16px;
+	padding: 0 12px;
+}
+
+.boss .root-ul .root-li .active{
+	text-decoration: underline;
+	color: red;
+}
