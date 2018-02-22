@@ -390,7 +390,7 @@ index.html:
   <title>项目名字</title>
 </head>
 <body>
-  <div id="app-root"></div>
+  <div id="root"></div>
   <script src="/test/bundle.js"></script>
 </body>
 </html>
@@ -407,13 +407,13 @@ index_template.html
   <title>项目名称</title>
 </head>
 <body>
-  <div id="app-root"></div>
+  <div id="root"></div>
 </body>
 </html>
 
 
 下
-1、配置app.js
+1、配置index.js
 
 import React from 'react'; // react核心，用到jsx的地方，都需要这个
 import ReactDOM from 'react-dom';   // 渲染组件时需要
@@ -440,7 +440,7 @@ ReactDOM.render(
   <Provider store={store}>
     <Router routes={AppRoutes} history={browserHistory} queryKey={false} />
   </Provider>,
-  document.getElementById('app-root') //  这个app-root是在index.html中写的div,其id为app-root
+  document.getElementById('root') //  这个root是在index.html中写的div,其id为root
 );
 
 
